@@ -1,0 +1,5 @@
+# Telegram Bot library
+python-telegram-bot==22.1
+
+# For loading environment variables from .env file
+python-dotenv==1.1.0

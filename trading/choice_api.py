@@ -1,6 +1,6 @@
 import os
 from typing import Dict, Optional
-from datetime import datetime, timedelta
+from datetime import datetime
 from EmQuantAPI import *
 from dotenv import load_dotenv
 
@@ -286,106 +286,4 @@ class ChoiceAPI:
             print(f"查询时序数据异常: {e}")
             return None
 
-    def get_historical_cross_section_data(self, codes: str, target_date: str) -> Optional[Dict]:
-        """
-        获取历史截面数据的替代方案
-        通过时序查询获取指定日期的截面数据
-
-        Args:
-            codes: 合约代码，支持单个或多个（逗号分隔）
-            target_date: 目标日期，格式 "YYYY-MM-DD"
-
-        Returns:
-            Dict: 包含指定日期的收盘价等数据，格式为：
-            {
-                'MA2509.CZC': {
-                    'close': 2365.0,
-                    'date': '2025-05-14'
-                }
-            }
-            查询失败返回None
-        """
-        if not self.logged_in:
-            print("请先登录Choice API")
-            return None
-
-        # 处理多个合约代码
-        code_list = [code.strip() for code in codes.split(',')]
-
-        # 检查中金所合约
-        for code in code_list:
-            if not self._validate_contract_code(code):
-                print(f"无效的合约代码格式: {code}")
-                return None
-
-            if self._check_cffex_contract(code):
-                print(f"不支持中金所合约: {code}")
-                return None
-
-        try:
-            # 验证日期格式
-            try:
-                datetime.strptime(target_date, "%Y-%m-%d")
-            except ValueError:
-                print("日期格式错误，请使用 YYYY-MM-DD 格式")
-                return None
-
-            # 使用时序查询获取单日数据（查询目标日期前后几天）
-            start_date = (datetime.strptime(target_date, "%Y-%m-%d") - timedelta(days=5)).strftime("%Y-%m-%d")
-            end_date = (datetime.strptime(target_date, "%Y-%m-%d") + timedelta(days=5)).strftime("%Y-%m-%d")
-
-            time_data = self.get_time_series_data(codes, start_date, end_date)
-
-            if not time_data:
-                print(f"无法获取 {target_date} 的历史数据")
-                return None
-
-            result = {}
-
-            for code in code_list:
-                if code not in time_data:
-                    result[code] = {
-                        'close': None,
-                        'date': target_date
-                    }
-                    continue
-
-                dates = time_data[code]['dates']
-                prices = time_data[code]['close_prices']
-
-                # 查找目标日期的数据
-                target_price = None
-                actual_date = target_date
-
-                # 格式化目标日期进行匹配
-                target_formatted = target_date
-
-                for i, date in enumerate(dates):
-                    # 将日期统一格式化为 YYYY-MM-DD
-                    if '/' in date:
-                        parts = date.split('/')
-                        formatted_date = f"{parts[0]}-{parts[1].zfill(2)}-{parts[2].zfill(2)}"
-                    else:
-                        formatted_date = date
-
-                    if formatted_date == target_formatted:
-                        target_price = prices[i]
-                        actual_date = formatted_date
-                        break
-
-                result[code] = {
-                    'close': target_price,
-                    'date': actual_date
-                }
-
-                if target_price is not None:
-                    print(f"{code} ({actual_date}) - 历史收盘价: {target_price}")
-                else:
-                    print(f"{code} - {target_date} 无交易数据")
-
-            return result
-
-        except Exception as e:
-            print(f"获取历史截面数据异常: {e}")
-            return None
 

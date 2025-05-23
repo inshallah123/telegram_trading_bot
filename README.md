@@ -59,9 +59,6 @@ telegram_trading_bot/
 │   ├── choice_api.py      # Choice API接口
 │   ├── bollinger.py       # 布林带策略
 │   └── signals.py         # 信号计算与管理
-└── utils/                 # 工具模块
-    ├── logger.py          # 日志管理
-    └── helpers.py         # 辅助函数
 ```
 
 ## Bot命令

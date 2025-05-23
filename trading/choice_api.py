@@ -183,10 +183,9 @@ class ChoiceAPI:
             print(f"查询截面数据异常: {e}")
             return None
 
-
     def get_time_series_data(self, codes: str, start_date: str, end_date: str) -> Optional[Dict]:
         """
-        查询时序数据：给定周期内的所有收盘价
+        查询时序数据：给定周期内的收盘价、成交量、持仓量时间序列
 
         Args:
             codes: 合约代码，支持单个或多个（逗号分隔）
@@ -194,11 +193,13 @@ class ChoiceAPI:
             end_date: 结束日期，格式 "YYYY-MM-DD"
 
         Returns:
-            Dict: 包含时序收盘价数据的字典，格式为：
+            Dict: 包含时序数据的字典，格式为：
             {
                 'MA2509.CZC': {
                     'dates': ['2025-05-20', '2025-05-21', ...],
-                    'close_prices': [2850.0, 2855.0, ...]
+                    'close_prices': [2850.0, 2855.0, ...],
+                    'volumes': [125463, 132456, ...],
+                    'open_interests': [89234, 91456, ...]
                 }
             }
             查询失败返回None
@@ -210,7 +211,7 @@ class ChoiceAPI:
         # 处理多个合约代码
         code_list = [code.strip() for code in codes.split(',')]
 
-        # 检查中金所合约
+        # 验证合约代码
         for code in code_list:
             if not self._validate_contract_code(code):
                 print(f"无效的合约代码格式: {code}")
@@ -229,10 +230,9 @@ class ChoiceAPI:
                 print("日期格式错误，请使用 YYYY-MM-DD 格式")
                 return None
 
-            # 查询收盘价时序数据
-            indicators = "CLOSE"
+            # 查询数据
+            indicators = "CLOSE,VOLUME,HQOI"
             options = "Ispandas=0"
-
             data = c.csd(codes, indicators, start_date, end_date, options)
 
             if data.ErrorCode != 0:
@@ -243,15 +243,16 @@ class ChoiceAPI:
             result = {}
             for code in data.Codes:
                 try:
-                    # 获取该合约的收盘价数据
-                    close_prices = data.Data[code][0]  # 第一个指标（CLOSE）的数据
+                    # 获取三个指标数据
+                    close_prices = data.Data[code][0]
+                    volumes = data.Data[code][1]
+                    open_interests = data.Data[code][2]
                     dates = data.Dates
 
                     # 格式化日期
                     formatted_dates = []
                     for date in dates:
                         if isinstance(date, str):
-                            # 如果是字符串，转换格式
                             try:
                                 if len(date) == 8:  # YYYYMMDD格式
                                     formatted_date = f"{date[:4]}-{date[4:6]}-{date[6:8]}"
@@ -265,25 +266,23 @@ class ChoiceAPI:
 
                     result[code] = {
                         'dates': formatted_dates,
-                        'close_prices': close_prices
+                        'close_prices': close_prices,
+                        'volumes': volumes,
+                        'open_interests': open_interests
                     }
-
-                    print(f"{code} - 查询到 {len(close_prices)} 个交易日数据")
-                    print(
-                        f"  日期范围: {formatted_dates[0] if formatted_dates else 'N/A'} ~ {formatted_dates[-1] if formatted_dates else 'N/A'}")
-                    print(
-                        f"  价格范围: {min(close_prices) if close_prices else 'N/A'} ~ {max(close_prices) if close_prices else 'N/A'}")
 
                 except (IndexError, KeyError) as e:
                     print(f"解析{code}数据失败: {e}")
                     result[code] = {
                         'dates': [],
-                        'close_prices': []
+                        'close_prices': [],
+                        'volumes': [],
+                        'open_interests': []
                     }
 
             return result
+
         except Exception as e:
             print(f"查询时序数据异常: {e}")
             return None
-
 

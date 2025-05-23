@@ -1,6 +1,6 @@
 import os
-from typing import Dict,Optional
-from datetime import datetime
+from typing import Dict, List, Optional, Tuple
+from datetime import datetime, timedelta
 from EmQuantAPI import *
 from dotenv import load_dotenv
 
@@ -81,12 +81,13 @@ class ChoiceAPI:
         valid_exchanges = ['CZC', 'DCE', 'SHF', 'GFE', 'INE', 'CFE']
         return exchange_part.upper() in valid_exchanges
 
-    def get_cross_section_data(self, codes: str) -> Optional[Dict]:
+    def get_cross_section_data(self, codes: str, end_date: Optional[str] = None) -> Optional[Dict]:
         """
-        查询截面数据：最近一个收盘交易日的收盘价、成交量、持仓量
+        查询截面数据：指定日期的收盘价、成交量、持仓量
 
         Args:
             codes: 合约代码，支持单个或多个（逗号分隔），如 "MA2509.CZC" 或 "MA2509.CZC,RM2509.CZC"
+            end_date: 查询日期，格式 "YYYY-MM-DD" 或 "YYYYMMDD"，默认为None（查询最新交易日）
 
         Returns:
             Dict: 包含收盘价、成交量、持仓量的字典，格式为：
@@ -94,7 +95,8 @@ class ChoiceAPI:
                 'MA2509.CZC': {
                     'close': 2850.0,
                     'volume': 125463,
-                    'open_interest': 89234
+                    'open_interest': 89234,
+                    'date': '2025-05-23'  # 实际查询的日期
                 }
             }
             查询失败返回None
@@ -117,9 +119,31 @@ class ChoiceAPI:
                 return None
 
         try:
-            # 查询收盘价、成交量、持仓量
+            # 构建查询参数
             indicators = "CLOSE,VOLUME,OI"
             options = "Ispandas=0"
+            query_date = end_date if end_date else "最新交易日"
+
+            # 如果指定了日期，添加到options中
+            if end_date:
+                # 验证并格式化日期
+                try:
+                    if len(end_date) == 10 and '-' in end_date:  # YYYY-MM-DD格式
+                        formatted_date = end_date.replace('-', '')  # 转换为YYYYMMDD
+                    elif len(end_date) == 8 and end_date.isdigit():  # YYYYMMDD格式
+                        formatted_date = end_date
+                        # 验证日期有效性
+                        datetime.strptime(end_date, "%Y%m%d")
+                    else:
+                        print("日期格式错误，请使用 YYYY-MM-DD 或 YYYYMMDD 格式")
+                        return None
+
+                    options += f",enddate={formatted_date}"
+                    print(f"查询日期: {end_date}")
+
+                except ValueError:
+                    print("无效的日期格式")
+                    return None
 
             data = c.css(codes, indicators, options)
 
@@ -136,9 +160,10 @@ class ChoiceAPI:
                     open_interest = data.Data[code][2]  # 持仓量
 
                     result[code] = {
-                        'close': close_price,
-                        'volume': volume,
-                        'open_interest': open_interest
+                        'close': None,
+                        'volume': None,
+                        'open_interest': None,
+                        'date': query_date
                     }
 
                     print(f"{code} - 收盘价: {close_price}, 成交量: {volume}, 持仓量: {open_interest}")

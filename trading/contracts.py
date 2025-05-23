@@ -3,7 +3,7 @@
 基于真实品种信息表数据，包含品种基本信息、交易所映射等
 """
 
-from typing import Dict, Optional, List, Set
+from typing import Dict
 from dataclasses import dataclass
 
 

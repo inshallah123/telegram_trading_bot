@@ -3,10 +3,10 @@ python-telegram-bot==20.7
 
 # 数据处理
 pandas==2.1.4
-numpy==1.24.3
+numpy==1.26.4
 
 # 环境变量管理
 python-dotenv==1.0.0
 
 # 日期时间处理
-pytz==2023.3
+pytz==2025.2

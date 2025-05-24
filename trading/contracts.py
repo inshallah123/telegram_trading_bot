@@ -1,11 +1,10 @@
 """
-期货品种信息配置模块
-基于真实品种信息表数据，包含品种基本信息、交易所映射等
+期货品种信息配置模块，包含品种基本信息、交易所映射等
 """
 
-from typing import Dict, List
+from typing import Dict
 from dataclasses import dataclass
-from datetime import datetime
+
 
 
 @dataclass

@@ -1,6 +1,6 @@
 import akshare as ak
 import pandas as pd
-from trading.Contracts import contract_multipliers, exchanges
+from trading.contracts import contract_multipliers, exchanges
 import re
 
 

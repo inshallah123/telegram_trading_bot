@@ -81,19 +81,20 @@ def fetch_raw_data(start_date: str, end_date: str, market: str = None) -> pd.Dat
 
 def get_main_contracts_data(df: pd.DataFrame, end_date: str) -> pd.DataFrame:
     """
-    对fetch_raw_data的返回结果进行进一步筛选，获取指定日期的主力合约数据
+    对fetch_raw_data的返回结果进行进一步筛选，获取主力合约的时序数据
 
     参数:
     df (pd.DataFrame): fetch_raw_data函数返回的原始时序数据框
-    end_date (str): 目标日期，格式为YYYYMMDD，只处理该日期的数据
+    end_date (str): 基准日期，格式为YYYYMMDD，用于确定主力合约
 
     返回:
-    pd.DataFrame: 清洗后的主力合约数据框
+    pd.DataFrame: 主力合约的时序数据框
 
     处理逻辑:
-    1. 筛选出date等于end_date的数据
+    1. 筛选出date等于end_date的数据，用于确定主力合约
     2. 筛选出variety在contract_multipliers字典中的数据
-    3. 按品种分组，每个品种只保留volume和open_interest都最大的记录
+    3. 按品种分组，每个品种只保留volume和open_interest都最大的记录，确定主力合约
+    4. 根据确定的主力合约，从原始时序数据中筛选出这些合约的完整时序数据
     """
 
     if df.empty:
@@ -101,71 +102,72 @@ def get_main_contracts_data(df: pd.DataFrame, end_date: str) -> pd.DataFrame:
         return pd.DataFrame()
 
     # 确保必要的列存在
-    required_columns = ['date', 'variety', 'volume', 'open_interest']
+    required_columns = ['date', 'variety', 'volume', 'open_interest', 'symbol']
     missing_columns = [col for col in required_columns if col not in df.columns]
     if missing_columns:
         raise ValueError(f"数据框缺少必要的列: {missing_columns}")
 
     print(f"原始数据共 {len(df)} 条记录")
 
-    # 第一步：筛选出date等于end_date的数据
-    # 确保date列为字符串格式进行比较
-    df_copy = df.copy()
-    df_copy['date'] = df_copy['date'].astype(str)
-
-    end_date_data = df_copy[df_copy['date'] == end_date].copy()
-    print(f"筛选日期 {end_date} 的数据后，剩余 {len(end_date_data)} 条记录")
+    # 第一步：直接筛选end_date的数据，避免完整复制
+    # 将date列转换为字符串进行比较（仅在需要时转换）
+    end_date_mask = df['date'].astype(str) == end_date
+    end_date_data = df[end_date_mask]
+    print(f"基准日期 {end_date} 的数据共 {len(end_date_data)} 条记录")
 
     if end_date_data.empty:
         print(f"指定日期 {end_date} 无数据，返回空数据框")
         return pd.DataFrame()
 
-    # 第二步：筛选出variety在contract_multipliers字典中的数据
-    filtered_df = end_date_data[end_date_data['variety'].isin(contract_multipliers.keys())].copy()
+    # 第二步：筛选指定品种
+    variety_mask = end_date_data['variety'].isin(contract_multipliers.keys())
+    filtered_df = end_date_data[variety_mask]
     print(f"筛选contracts字典中的品种后，剩余 {len(filtered_df)} 条记录")
 
     if filtered_df.empty:
         print("筛选后无数据，返回空数据框")
         return pd.DataFrame()
 
-    # 数据类型转换：将volume和open_interest转换为数值类型
-    try:
-        filtered_df['volume'] = pd.to_numeric(filtered_df['volume'], errors='coerce')
-        filtered_df['open_interest'] = pd.to_numeric(filtered_df['open_interest'], errors='coerce')
-
-        # 删除转换失败的行（NaN值）
-        filtered_df = filtered_df.dropna(subset=['volume', 'open_interest'])
-        print(f"数据类型转换后，剩余 {len(filtered_df)} 条记录")
-
-    except Exception as e:
-        print(f"数据类型转换失败: {e}")
-        return pd.DataFrame()
-
-    if filtered_df.empty:
-        print("数据类型转换后无有效数据，返回空数据框")
-        return pd.DataFrame()
-
-    # 第三步：按variety分组，选择每个品种volume和open_interest都最大的记录
-    main_contracts = []
+    # 第三步：确定主力合约symbols
+    main_contract_symbols = []
 
     for variety in filtered_df['variety'].unique():
         variety_data = filtered_df[filtered_df['variety'] == variety]
 
-        # 找到volume和open_interest都最大的记录
-        # 先按volume降序排列，再按open_interest降序排列，取第一条
-        main_contract = variety_data.nlargest(1, ['volume', 'open_interest'])
+        # 数据类型转换（仅对当前品种数据）
+        try:
+            volume = pd.to_numeric(variety_data['volume'], errors='coerce')
+            open_interest = pd.to_numeric(variety_data['open_interest'], errors='coerce')
+            
+            # 创建临时数据框用于排序
+            temp_df = variety_data.copy()
+            temp_df['volume_num'] = volume
+            temp_df['open_interest_num'] = open_interest
+            
+            # 删除转换失败的行
+            temp_df = temp_df.dropna(subset=['volume_num', 'open_interest_num'])
+            
+            if not temp_df.empty:
+                # 找到volume和open_interest都最大的记录
+                main_contract = temp_df.nlargest(1, ['volume_num', 'open_interest_num'])
+                symbol = main_contract['symbol'].iloc[0]
+                main_contract_symbols.append(symbol)
+                print(f"品种 {variety}: 确定主力合约 {symbol}")
+                
+        except Exception as e:
+            print(f"处理品种 {variety} 时出现错误: {e}")
+            continue
 
-        if not main_contract.empty:
-            main_contracts.append(main_contract)
-            print(
-                f"品种 {variety}: 选择主力合约，volume={main_contract['volume'].iloc[0]}, open_interest={main_contract['open_interest'].iloc[0]}")
-
-    # 合并所有主力合约数据
-    if main_contracts:
-        result_df = pd.concat(main_contracts, ignore_index=True)
-        print(f"日期 {end_date} 的主力合约数据共 {len(result_df)} 条记录，涵盖 {result_df['variety'].nunique()} 个品种")
-        return result_df
-    else:
-        print("未找到任何主力合约数据，返回空数据框")
+    if not main_contract_symbols:
+        print("未找到任何主力合约，返回空数据框")
         return pd.DataFrame()
+
+    # 第四步：使用布尔索引直接筛选，避免不必要的复制
+    symbol_mask = df['symbol'].isin(main_contract_symbols)
+    main_contracts_timeseries = df[symbol_mask].copy()  # 只在最后复制一次
+    
+    print(f"主力合约时序数据共 {len(main_contracts_timeseries)} 条记录，涵盖 {len(main_contract_symbols)} 个主力合约")
+    print(f"时间范围: {main_contracts_timeseries['date'].min()} 到 {main_contracts_timeseries['date'].max()}")
+    
+    return main_contracts_timeseries
 

@@ -80,3 +80,5 @@ def fetch_raw_data(start_date: str, end_date: str, market: str = None) -> pd.Dat
         return pd.DataFrame()
 
 
+testdata = fetch_raw_data("20250603","20250603","CFFEX")
+print(testdata)

@@ -8,8 +8,8 @@ import ddddocr
 load_dotenv()
 
 # 从环境变量获取账户信息
-username = os.getenv('CFFMC_USER_NAME')
-password_value = os.getenv('CFFMC_PASSWORD')
+username = os.getenv('CFMMC_USER_NAME')
+password_value = os.getenv('CFMMC_PASSWORD')
 
 # 连接浏览器
 browser = Chromium()

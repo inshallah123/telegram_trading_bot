@@ -15,6 +15,7 @@ password_value = os.getenv('CFMMC_PASSWORD')
 browser = Chromium()
 # 获取标签页对象,相当于新开标签页
 crawler = browser.latest_tab
+crawler.set.retry_times(5)
 # 访问网页、启动OCR
 crawler.get('https://investorservice.cfmmc.com')
 ocr = ddddocr.DdddOcr()

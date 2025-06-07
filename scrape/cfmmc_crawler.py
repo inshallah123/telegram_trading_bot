@@ -45,7 +45,7 @@ crawler.close() #关闭标签页
 browser.quit() #关闭浏览器
 # 健壮性模块构建
 
-#<input type="text" name="tradeDate" maxlength="10" size="10" value=""> #交易日期框元素，点三下全选
+#<input type="text" name="tradeDate" maxlength="10" size="10" value=""> #交易日期框元素，点三下全选，日期格式YYYY-MM-DD
 #<input type="submit" value="提交" class="button"> #提交框元素
-#<input type="submit" name="logout" value="退出系统" class="button">
+#<input type="submit" name="logout" value="退出系统" class="button">，该元素检查是否登录成功，能够探测到该元素说明登录完成。
 

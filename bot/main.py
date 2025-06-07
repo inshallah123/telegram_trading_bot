@@ -1,11 +1,12 @@
 import os
 import logging
+import asyncio
 from dotenv import load_dotenv
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
 from handlers import (
     start_command, help_command, status_command, restart_command,
-    handle_message, error_handler
+    handle_message, error_handler, cleanup_inactive_sessions
 )
 
 # 加载环境变量
@@ -19,6 +20,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+async def post_init(_application: Application
+) -> None:
+    """Bot启动后的初始化"""
+    # 创建清理任务
+    asyncio.create_task(cleanup_inactive_sessions())
+    logger.info("会话清理任务已启动")
+
+
 def main():
     """启动Bot"""
     # 获取Token
@@ -28,7 +37,7 @@ def main():
         return
 
     # 创建应用
-    application = Application.builder().token(token).build()
+    application = Application.builder().token(token).post_init(post_init).build()
 
     # 注册命令处理器
     application.add_handler(CommandHandler("start", start_command))

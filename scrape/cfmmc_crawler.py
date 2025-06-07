@@ -47,5 +47,7 @@ browser.quit() #关闭浏览器
 
 #<input type="text" name="tradeDate" maxlength="10" size="10" value=""> #交易日期框元素，点三下全选，日期格式YYYY-MM-DD
 #<input type="submit" value="提交" class="button"> #提交框元素
-#<input type="submit" name="logout" value="退出系统" class="button">，该元素检查是否登录成功，能够探测到该元素说明登录完成。
+#<input type="submit" name="logout" value="退出系统" class="button">，该元素检查是否登录成功，能够探测到该元素说明登录成功。
+#"用户名或密码错误", 出现该文本说明CFMMC账密输入错误
+#"Invalid Verification Code", 出现该文本说明验证码输入错误
 
